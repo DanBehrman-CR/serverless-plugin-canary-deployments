@@ -8,8 +8,8 @@ module.exports.pre = (event, context, callback) => {
   console.log('Check some stuff before shifting traffic...')
 
   const params = {
-    deploymentId: deploymentId,
-    lifecycleEventHookExecutionId: lifecycleEventHookExecutionId,
+    deploymentId,
+    lifecycleEventHookExecutionId,
     status: 'Succeeded' // status can be 'Succeeded' or 'Failed'
   }
 
@@ -25,8 +25,8 @@ module.exports.post = (event, context, callback) => {
   console.log('Check some stuff after shifting traffic...')
 
   const params = {
-    deploymentId: deploymentId,
-    lifecycleEventHookExecutionId: lifecycleEventHookExecutionId,
+    deploymentId,
+    lifecycleEventHookExecutionId,
     status: 'Succeeded' // status can be 'Succeeded' or 'Failed'
   }
 

@@ -1,10 +1,7 @@
-const _ = require('lodash/fp')
-const flattenObject = require('flat')
-const CfGenerators = require('./lib/CfTemplateGenerators')
-const {
-  customPropertiesSchema,
-  functionPropertiesSchema
-} = require('./configSchemas')
+import fp from 'lodash'
+import flattenObject from 'flat'
+import CfGenerators from './lib/CfTemplateGenerators/index.js'
+import { customPropertiesSchema, functionPropertiesSchema } from './configSchemas/index.js'
 
 const slsHasConfigSchema = sls =>
   sls.configSchemaHandler &&
@@ -35,11 +32,11 @@ class ServerlessCanaryDeployments {
 
   get withDeploymentPreferencesFns () {
     return this.serverless.service.getAllFunctions()
-      .filter(name => _.has('deploymentSettings', this.service.getFunction(name)))
+      .filter(name => fp.has('deploymentSettings', this.service.getFunction(name)))
   }
 
   get globalSettings () {
-    return _.pathOr({}, 'custom.deploymentSettings', this.service)
+    return fp.pathOr({}, 'custom.deploymentSettings', this.service)
   }
 
   get currentStage () {
@@ -88,8 +85,8 @@ class ServerlessCanaryDeployments {
   }
 
   currentStageEnabled () {
-    const enabledStages = _.getOr([], 'stages', this.globalSettings)
-    return _.isEmpty(enabledStages) || _.includes(this.currentStage, enabledStages)
+    const enabledStages = fp.getOr([], 'stages', this.globalSettings)
+    return fp.isEmpty(enabledStages) || fp.includes(this.currentStage, enabledStages)
   }
 
   buildExecutionRole () {
@@ -99,18 +96,18 @@ class ServerlessCanaryDeployments {
     if (!inputRole) {
       return
     }
-    const hasHook = _.pipe(
+    const hasHook = fp.pipe(
       this.getDeploymentSettingsFor.bind(this),
       settings => settings.preTrafficHook || settings.postTrafficHook
     )
-    const getDeploymentGroup = _.pipe(
+    const getDeploymentGroup = fp.pipe(
       this.getFunctionName.bind(this),
       this.getFunctionDeploymentGroupId.bind(this),
       this.getDeploymentGroupName.bind(this)
     )
-    const deploymentGroups = _.pipe(
-      _.filter(hasHook),
-      _.map(getDeploymentGroup)
+    const deploymentGroups = fp.pipe(
+      fp.filter(hasHook),
+      fp.map(getDeploymentGroup)
     )(this.withDeploymentPreferencesFns)
 
     const outputRole = CfGenerators.iam.buildExecutionRoleWithCodeDeploy(inputRole, this.codeDeployAppName, deploymentGroups)
@@ -119,7 +116,7 @@ class ServerlessCanaryDeployments {
   }
 
   buildFunctionsResources () {
-    return _.flatMap(
+    return fp.flatMap(
       serverlessFunction => this.buildFunctionResources(serverlessFunction),
       this.withDeploymentPreferencesFns
     )
@@ -199,7 +196,7 @@ class ServerlessCanaryDeployments {
 
   buildPermissionsForAlias ({ functionName, functionAlias }) {
     const permissions = this.getLambdaPermissionsFor(functionName)
-    return _.entries(permissions).map(([logicalName, template]) => {
+    return fp.entries(permissions).map(([logicalName, template]) => {
       const templateWithAlias = CfGenerators.lambda
         .replacePermissionFunctionWithAlias(template, functionAlias)
       return { [logicalName]: templateWithAlias }
@@ -221,7 +218,7 @@ class ServerlessCanaryDeployments {
       'AWS::AppSync::DataSource': CfGenerators.appSync.replaceAppSyncDataSourceWithAlias
     }
     const functionEvents = this.getEventsFor(functionName)
-    const functionEventsEntries = _.entries(functionEvents)
+    const functionEventsEntries = fp.entries(functionEvents)
     const eventsWithAlias = functionEventsEntries.map(([logicalName, event]) => {
       const evt = replaceAliasStrategy[event.Type](event, functionAlias, functionName)
       return { [logicalName]: evt }
@@ -258,183 +255,183 @@ class ServerlessCanaryDeployments {
   }
 
   getApiGatewayMethodsFor (functionName) {
-    const isApiGMethod = _.matchesProperty('Type', 'AWS::ApiGateway::Method')
-    const isMethodForFunction = _.pipe(
-      _.prop('Properties.Integration'),
+    const isApiGMethod = fp.matchesProperty('Type', 'AWS::ApiGateway::Method')
+    const isMethodForFunction = fp.pipe(
+      fp.prop('Properties.Integration'),
       flattenObject,
-      _.includes(functionName)
+      fp.includes(functionName)
     )
-    const getMethodsForFunction = _.pipe(
-      _.pickBy(isApiGMethod),
-      _.pickBy(isMethodForFunction)
+    const getMethodsForFunction = fp.pipe(
+      fp.pickBy(isApiGMethod),
+      fp.pickBy(isMethodForFunction)
     )
     return getMethodsForFunction(this.compiledTpl.Resources)
   }
 
   getApiGatewayV2MethodsFor (functionName) {
-    const isApiGMethod = _.matchesProperty('Type', 'AWS::ApiGatewayV2::Integration')
-    const isMethodForFunction = _.pipe(
-      _.prop('Properties.IntegrationUri'),
+    const isApiGMethod = fp.matchesProperty('Type', 'AWS::ApiGatewayV2::Integration')
+    const isMethodForFunction = fp.pipe(
+      fp.prop('Properties.IntegrationUri'),
       flattenObject,
-      _.includes(functionName)
+      fp.includes(functionName)
     )
-    const getMethodsForFunction = _.pipe(
-      _.pickBy(isApiGMethod),
-      _.pickBy(isMethodForFunction)
+    const getMethodsForFunction = fp.pipe(
+      fp.pickBy(isApiGMethod),
+      fp.pickBy(isMethodForFunction)
     )
     return getMethodsForFunction(this.compiledTpl.Resources)
   }
 
   getApiGatewayV2AuthorizersFor (functionName) {
-    const isApiGMethod = _.matchesProperty('Type', 'AWS::ApiGatewayV2::Authorizer')
-    const isMethodForFunction = _.pipe(
-      _.prop('Properties.AuthorizerUri'),
+    const isApiGMethod = fp.matchesProperty('Type', 'AWS::ApiGatewayV2::Authorizer')
+    const isMethodForFunction = fp.pipe(
+      fp.prop('Properties.AuthorizerUri'),
       flattenObject,
-      _.includes(functionName)
+      fp.includes(functionName)
     )
-    const getMethodsForFunction = _.pipe(
-      _.pickBy(isApiGMethod),
-      _.pickBy(isMethodForFunction)
+    const getMethodsForFunction = fp.pipe(
+      fp.pickBy(isApiGMethod),
+      fp.pickBy(isMethodForFunction)
     )
     return getMethodsForFunction(this.compiledTpl.Resources)
   }
 
   getEventSourceMappingsFor (functionName) {
-    const isEventSourceMapping = _.matchesProperty('Type', 'AWS::Lambda::EventSourceMapping')
-    const isMappingForFunction = _.pipe(
-      _.prop('Properties.FunctionName'),
+    const isEventSourceMapping = fp.matchesProperty('Type', 'AWS::Lambda::EventSourceMapping')
+    const isMappingForFunction = fp.pipe(
+      fp.prop('Properties.FunctionName'),
       flattenObject,
-      _.includes(functionName)
+      fp.includes(functionName)
     )
-    const getMappingsForFunction = _.pipe(
-      _.pickBy(isEventSourceMapping),
-      _.pickBy(isMappingForFunction)
+    const getMappingsForFunction = fp.pipe(
+      fp.pickBy(isEventSourceMapping),
+      fp.pickBy(isMappingForFunction)
     )
     return getMappingsForFunction(this.compiledTpl.Resources)
   }
 
   getSnsTopicsFor (functionName) {
-    const isSnsTopic = _.matchesProperty('Type', 'AWS::SNS::Topic')
-    const isMappingForFunction = _.pipe(
-      _.prop('Properties.Subscription'),
-      _.map(_.prop('Endpoint.Fn::GetAtt')),
-      _.flatten,
-      _.includes(functionName)
+    const isSnsTopic = fp.matchesProperty('Type', 'AWS::SNS::Topic')
+    const isMappingForFunction = fp.pipe(
+      fp.prop('Properties.Subscription'),
+      fp.map(fp.prop('Endpoint.Fn::GetAtt')),
+      fp.flatten,
+      fp.includes(functionName)
     )
-    const getMappingsForFunction = _.pipe(
-      _.pickBy(isSnsTopic),
-      _.pickBy(isMappingForFunction)
+    const getMappingsForFunction = fp.pipe(
+      fp.pickBy(isSnsTopic),
+      fp.pickBy(isMappingForFunction)
     )
     return getMappingsForFunction(this.compiledTpl.Resources)
   }
 
   getSnsSubscriptionsFor (functionName) {
-    const isSnsSubscription = _.matchesProperty('Type', 'AWS::SNS::Subscription')
-    const isSubscriptionForFunction = _.matchesProperty('Properties.Endpoint.Fn::GetAtt[0]', functionName)
-    const getMappingsForFunction = _.pipe(
-      _.pickBy(isSnsSubscription),
-      _.pickBy(isSubscriptionForFunction)
+    const isSnsSubscription = fp.matchesProperty('Type', 'AWS::SNS::Subscription')
+    const isSubscriptionForFunction = fp.matchesProperty('Properties.Endpoint.Fn::GetAtt[0]', functionName)
+    const getMappingsForFunction = fp.pipe(
+      fp.pickBy(isSnsSubscription),
+      fp.pickBy(isSubscriptionForFunction)
     )
     return getMappingsForFunction(this.compiledTpl.Resources)
   }
 
   getCloudWatchEventsFor (functionName) {
-    const isCloudWatchEvent = _.matchesProperty('Type', 'AWS::Events::Rule')
-    const isCwEventForFunction = _.pipe(
-      _.prop('Properties.Targets'),
-      _.map(_.prop('Arn.Fn::GetAtt')),
-      _.flatten,
-      _.includes(functionName)
+    const isCloudWatchEvent = fp.matchesProperty('Type', 'AWS::Events::Rule')
+    const isCwEventForFunction = fp.pipe(
+      fp.prop('Properties.Targets'),
+      fp.map(fp.prop('Arn.Fn::GetAtt')),
+      fp.flatten,
+      fp.includes(functionName)
     )
-    const getMappingsForFunction = _.pipe(
-      _.pickBy(isCloudWatchEvent),
-      _.pickBy(isCwEventForFunction)
+    const getMappingsForFunction = fp.pipe(
+      fp.pickBy(isCloudWatchEvent),
+      fp.pickBy(isCwEventForFunction)
     )
     return getMappingsForFunction(this.compiledTpl.Resources)
   }
 
   getCloudWatchLogsFor (functionName) {
-    const isLogSubscription = _.matchesProperty('Type', 'AWS::Logs::SubscriptionFilter')
-    const isLogSubscriptionForFn = _.pipe(
-      _.prop('Properties.DestinationArn.Fn::GetAtt'),
-      _.flatten,
-      _.includes(functionName)
+    const isLogSubscription = fp.matchesProperty('Type', 'AWS::Logs::SubscriptionFilter')
+    const isLogSubscriptionForFn = fp.pipe(
+      fp.prop('Properties.DestinationArn.Fn::GetAtt'),
+      fp.flatten,
+      fp.includes(functionName)
     )
-    const getMappingsForFunction = _.pipe(
-      _.pickBy(isLogSubscription),
-      _.pickBy(isLogSubscriptionForFn)
+    const getMappingsForFunction = fp.pipe(
+      fp.pickBy(isLogSubscription),
+      fp.pickBy(isLogSubscriptionForFn)
     )
     return getMappingsForFunction(this.compiledTpl.Resources)
   }
 
   getS3EventsFor (functionName) {
-    const isS3Event = _.matchesProperty('Type', 'AWS::S3::Bucket')
-    const isS3EventForFunction = _.pipe(
-      _.prop('Properties.NotificationConfiguration.LambdaConfigurations'),
-      _.map(_.prop('Function.Fn::GetAtt')),
-      _.flatten,
-      _.includes(functionName)
+    const isS3Event = fp.matchesProperty('Type', 'AWS::S3::Bucket')
+    const isS3EventForFunction = fp.pipe(
+      fp.prop('Properties.NotificationConfiguration.LambdaConfigurations'),
+      fp.map(fp.prop('Function.Fn::GetAtt')),
+      fp.flatten,
+      fp.includes(functionName)
     )
-    const getMappingsForFunction = _.pipe(
-      _.pickBy(isS3Event),
-      _.pickBy(isS3EventForFunction)
+    const getMappingsForFunction = fp.pipe(
+      fp.pickBy(isS3Event),
+      fp.pickBy(isS3EventForFunction)
     )
     return getMappingsForFunction(this.compiledTpl.Resources)
   }
 
   getIotTopicRulesFor (functionName) {
-    const isIotTopicRule = _.matchesProperty('Type', 'AWS::IoT::TopicRule')
-    const isIotTopicRuleForFunction = _.matchesProperty(
+    const isIotTopicRule = fp.matchesProperty('Type', 'AWS::IoT::TopicRule')
+    const isIotTopicRuleForFunction = fp.matchesProperty(
       'Properties.TopicRulePayload.Actions[0].Lambda.FunctionArn.Fn::GetAtt[0]',
       functionName
     )
-    const getMappingsForFunction = _.pipe(
-      _.pickBy(isIotTopicRule),
-      _.pickBy(isIotTopicRuleForFunction)
+    const getMappingsForFunction = fp.pipe(
+      fp.pickBy(isIotTopicRule),
+      fp.pickBy(isIotTopicRuleForFunction)
     )
     return getMappingsForFunction(this.compiledTpl.Resources)
   }
 
   getAppSyncDataSourcesFor (functionName) {
-    const isAppSyncDataSource = _.matchesProperty('Type', 'AWS::AppSync::DataSource')
-    const isAppSyncDataSourceForFunction = _.matchesProperty(
+    const isAppSyncDataSource = fp.matchesProperty('Type', 'AWS::AppSync::DataSource')
+    const isAppSyncDataSourceForFunction = fp.matchesProperty(
       'Properties.LambdaConfig.LambdaFunctionArn.Fn::GetAtt[0]',
       functionName
     )
-    const getMappingsForFunction = _.pipe(
-      _.pickBy(isAppSyncDataSource),
-      _.pickBy(isAppSyncDataSourceForFunction)
+    const getMappingsForFunction = fp.pipe(
+      fp.pickBy(isAppSyncDataSource),
+      fp.pickBy(isAppSyncDataSourceForFunction)
     )
     return getMappingsForFunction(this.compiledTpl.Resources)
   }
 
   getVersionNameFor (functionName) {
-    const isLambdaVersion = _.matchesProperty('Type', 'AWS::Lambda::Version')
-    const isVersionForFunction = _.matchesProperty('Properties.FunctionName.Ref', functionName)
-    const getVersionNameForFunction = _.pipe(
-      _.pickBy(isLambdaVersion),
-      _.findKey(isVersionForFunction)
+    const isLambdaVersion = fp.matchesProperty('Type', 'AWS::Lambda::Version')
+    const isVersionForFunction = fp.matchesProperty('Properties.FunctionName.Ref', functionName)
+    const getVersionNameForFunction = fp.pipe(
+      fp.pickBy(isLambdaVersion),
+      fp.findKey(isVersionForFunction)
     )
     return getVersionNameForFunction(this.compiledTpl.Resources)
   }
 
   getLambdaPermissionsFor (functionName) {
-    const isLambdaPermission = _.matchesProperty('Type', 'AWS::Lambda::Permission')
-    const isPermissionForFunction = _.cond([
-      [_.prop('Properties.FunctionName.Fn::GetAtt[0]'), _.matchesProperty('Properties.FunctionName.Fn::GetAtt[0]', functionName)],
-      [_.prop('Properties.FunctionName.Ref'), _.matchesProperty('Properties.FunctionName.Ref', functionName)]
+    const isLambdaPermission = fp.matchesProperty('Type', 'AWS::Lambda::Permission')
+    const isPermissionForFunction = fp.cond([
+      [fp.prop('Properties.FunctionName.Fn::GetAtt[0]'), fp.matchesProperty('Properties.FunctionName.Fn::GetAtt[0]', functionName)],
+      [fp.prop('Properties.FunctionName.Ref'), fp.matchesProperty('Properties.FunctionName.Ref', functionName)]
     ])
 
-    const getPermissionForFunction = _.pipe(
-      _.pickBy(isLambdaPermission),
-      _.pickBy(isPermissionForFunction)
+    const getPermissionForFunction = fp.pipe(
+      fp.pickBy(isLambdaPermission),
+      fp.pickBy(isPermissionForFunction)
     )
 
     return getPermissionForFunction(this.compiledTpl.Resources)
   }
 
   getResourceLogicalName (resource) {
-    return _.head(_.keys(resource))
+    return fp.head(fp.keys(resource))
   }
 
   getDeploymentSettingsFor (slsFunctionName) {
@@ -443,4 +440,4 @@ class ServerlessCanaryDeployments {
   }
 }
 
-module.exports = ServerlessCanaryDeployments
+export default ServerlessCanaryDeployments
