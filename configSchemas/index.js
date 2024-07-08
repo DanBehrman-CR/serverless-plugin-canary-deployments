@@ -1,7 +1,7 @@
-const customPropertiesSchema = require('./customPropertiesSchema.json')
-const functionPropertiesSchema = require('./functionPropertiesSchema.json')
+import customPropertiesSchema from './customPropertiesSchema.json' with {type: 'json'};
+import functionPropertiesSchema from './functionPropertiesSchema.json' with {type: 'json'};
 
-module.exports = {
+export default {
   customPropertiesSchema,
   functionPropertiesSchema
 }

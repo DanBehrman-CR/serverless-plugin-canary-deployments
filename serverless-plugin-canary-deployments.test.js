@@ -1,17 +1,19 @@
-const fs = require('fs')
-const path = require('path')
-const chai = require('chai')
-const _ = require('lodash/fp')
-const { getInstalledPathSync } = require('get-installed-path')
-const ServerlessCanaryDeployments = require('./serverless-plugin-canary-deployments')
+import fs from 'fs'
+import path from 'path'
+import expect from 'chai'
+import fp from 'lodash'
+// import getInstalledPathSync from 'get-installed-path'
+import ServerlessCanaryDeployments from './serverless-plugin-canary-deployments.js'
+import Serverless from 'serverless'
+import AwsProvider from './node_modules/serverless/lib/plugins/aws/provider.js'
 
-const serverlessPath = getInstalledPathSync('serverless', { local: true })
-const Serverless = require(`${serverlessPath}/lib/Serverless`)
-const serverlessVersion = parseInt((new Serverless()).version)
-const AwsProvider = serverlessVersion > 1
-  ? require(`${serverlessPath}/lib/plugins/aws/provider`)
-  : require(`${serverlessPath}/lib/plugins/aws/provider/awsProvider`)
-const { expect } = chai
+// const serverlessPath = getInstalledPathSync('serverless', { local: true })
+// import Serverless from "${serverlessPath}/lib/Serverless"
+// const serverlessVersion = parseInt((new Serverless()).version)
+// const AwsProvider = serverlessVersion > 1
+//   ? require(`${serverlessPath}/lib/plugins/aws/provider`)
+//   : require(`${serverlessPath}/lib/plugins/aws/provider/awsProvider`)
+// const { expect } = chai
 const fixturesPath = path.resolve(__dirname, 'fixtures')
 
 describe('ServerlessCanaryDeployments', () => {
@@ -20,14 +22,14 @@ describe('ServerlessCanaryDeployments', () => {
 
   describe('addCanaryDeploymentResources', () => {
     const testCaseFiles = fs.readdirSync(fixturesPath)
-    const getTestCaseName = _.pipe(_.split('.'), _.head)
-    const testCaseFileType = _.pipe(_.split('.'), _.get('[1]'))
-    const testCaseContentsFromFiles = _.reduce((acc, fileName) => {
+    const getTestCaseName = fp.pipe(fp.split('.'), fp.head)
+    const testCaseFileType = fp.pipe(fp.split('.'), fp.get('[1]'))
+    const testCaseContentsFromFiles = fp.reduce((acc, fileName) => {
       const contents = JSON.parse(fs.readFileSync(path.resolve(fixturesPath, fileName)))
-      return _.set(testCaseFileType(fileName), contents, acc)
+      return fp.set(testCaseFileType(fileName), contents, acc)
     }, {})
-    const testCaseFilesByName = _.groupBy(getTestCaseName, testCaseFiles)
-    this.testCases = _.map(
+    const testCaseFilesByName = fp.groupBy(getTestCaseName, testCaseFiles)
+    this.testCases = fp.map(
       (caseName) => {
         const testCaseContents = testCaseContentsFromFiles(testCaseFilesByName[caseName])
         return Object.assign(testCaseContents, { caseName })
